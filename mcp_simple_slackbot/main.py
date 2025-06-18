@@ -546,7 +546,9 @@ When you need to use a tool, you MUST format your response exactly like this:
 Make sure to include both the tool name AND the JSON arguments.
 Never leave out the JSON arguments.
 
-After receiving tool results, interpret them for the user in a helpful way.
+IMPORTANT: Always carefully follow the user's specific requirements and preferences. If they ask for specific requirements (like lunch items only) or ask to exclude certain items (like breakfast items), you MUST respect these preferences both when using tools and when interpreting results. Filter and present only the information that matches their specific requests.
+
+After receiving tool results, interpret them for the user in a helpful way, making sure to only include items that match their specific criteria and preferences.
 """
                 ),
             }
@@ -624,6 +626,15 @@ After receiving tool results, interpret them for the user in a helpful way.
 
                     try:
                         # Get interpretation from LLM
+                        # Get the original user request from conversation history
+                        user_request = ""
+                        if channel in self.conversations and "messages" in self.conversations[channel]:
+                            # Get the most recent user message
+                            for msg in reversed(self.conversations[channel]["messages"]):
+                                if msg["role"] == "user":
+                                    user_request = msg["content"]
+                                    break
+
                         messages = [
                             {
                                 "role": "system",
@@ -631,16 +642,22 @@ After receiving tool results, interpret them for the user in a helpful way.
                                     "You are a helpful assistant. You've just "
                                     "used a tool and received results. Interpret "
                                     "these results for the user in a clear, "
-                                    "helpful way."
+                                    "helpful way. CRITICALLY IMPORTANT: Respect the user's "
+                                    "specific preferences and requirements. If they asked for "
+                                    "specific meal types or to exclude certain items, only show "
+                                    "results that match their criteria. Filter out anything that "
+                                    "doesn't meet their specifications."
                                 ),
                             },
                             {
                                 "role": "user",
                                 "content": (
+                                    f"Original user request: {user_request}\n\n"
                                     f"I used the tool {tool_name} with arguments "
                                     f"{args_text} and got this result:\n\n"
                                     f"{tool_result}\n\n"
-                                    f"Please interpret this result for me."
+                                    f"Please interpret this result for me, making sure to only "
+                                    f"include items that match my original request and preferences."
                                 ),
                             },
                         ]
