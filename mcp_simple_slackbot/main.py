@@ -28,6 +28,7 @@ class Configuration:
         self.load_env()
         self.slack_bot_token = os.getenv("SLACK_BOT_TOKEN")
         self.slack_app_token = os.getenv("SLACK_APP_TOKEN")
+        self.openai_api_base = os.getenv("OPENAI_API_BASE", "https://api.openai.com")
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         self.groq_api_key = os.getenv("GROQ_API_KEY")
         self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -239,15 +240,17 @@ Arguments:
 class LLMClient:
     """Client for communicating with LLM APIs."""
 
-    def __init__(self, api_key: str, model: str) -> None:
+    def __init__(self, api_key: str, model: str, api_base: str = "https://api.openai.com") -> None:
         """Initialize the LLM client.
 
         Args:
             api_key: API key for the LLM provider
             model: Model identifier to use
+            api_base: Base URL for the OpenAI API
         """
         self.api_key = api_key
         self.model = model
+        self.api_base = api_base
         self.timeout = 30.0  # 30 second timeout
         self.max_retries = 2
 
@@ -271,7 +274,7 @@ class LLMClient:
 
     async def _get_openai_response(self, messages: List[Dict[str, str]]) -> str:
         """Get a response from the OpenAI API."""
-        url = "https://api.openai.com/v1/chat/completions"
+        url = f"{self.api_base}/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -717,7 +720,7 @@ async def main() -> None:
         for name, srv_config in server_config["mcpServers"].items()
     ]
 
-    llm_client = LLMClient(config.llm_api_key, config.llm_model)
+    llm_client = LLMClient(config.llm_api_key, config.llm_model, config.openai_api_base)
 
     slack_bot = SlackMCPBot(
         config.slack_bot_token, config.slack_app_token, servers, llm_client
