@@ -711,10 +711,24 @@ async def main() -> None:
             "SLACK_BOT_TOKEN and SLACK_APP_TOKEN must be set in environment variables"
         )
 
+    # Load main server configuration
     server_config = config.load_config("servers_config.json")
+    all_servers = server_config["mcpServers"].copy()
+
+    # Load and merge local server configuration if it exists
+    try:
+        local_server_config = config.load_config("servers_config_local.json")
+        if "mcpServers" in local_server_config:
+            all_servers.update(local_server_config["mcpServers"])
+            logging.info(f"Merged {len(local_server_config['mcpServers'])} servers from servers_config_local.json")
+    except FileNotFoundError:
+        logging.info("No servers_config_local.json found, using only main configuration")
+    except Exception as e:
+        logging.warning(f"Error loading servers_config_local.json: {e}")
+
     servers = [
         Server(name, srv_config)
-        for name, srv_config in server_config["mcpServers"].items()
+        for name, srv_config in all_servers.items()
     ]
 
     llm_client = LLMClient(config.llm_api_key, config.llm_model)
